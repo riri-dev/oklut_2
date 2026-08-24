@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://riri.dev.github.io/oklut_1",
+  "homepage": "https://riri.dev.github.io/oklut_2",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -54,7 +54,7 @@
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
+    "@vitejs/plugin-react": "^6.0.5",
     "autoprefixer": "^10.4.20",
     "gh-pages": "^6.3.0",
     "postcss": "^8.4.47",

@@ -1,5 +1,19 @@
 import { supabase } from '@/lib/supabase'
-import type { PerformanceGoal, PerformanceReview, JobOpening, Candidate, Interview, Offer, AuditLog, InterviewSlot } from '@/lib/database.types'
+import type { PerformanceGoal, PerformanceReview, JobOpening, Candidate, Interview, Offer, AuditLog } from '@/lib/database.types'
+
+// Admin-side slot pool shape (interview_slots table is not part of the live
+// public schema; kept local so recruiter tooling keeps compiling).
+export interface InterviewSlot {
+  id: string
+  job_opening_id: string
+  round: 'technical' | 'hr'
+  scheduled_at: string
+  meeting_link?: string | null
+  max_candidates: number
+  status?: string | null
+  created_by?: string | null
+  created_at: string
+}
 
 // ---------- Performance ----------
 export async function fetchPerformanceGoals(employeeId?: string) {
@@ -97,7 +111,7 @@ export async function createJobOpening(input: {
   return data as JobOpening
 }
 
-export async function updateJobOpening(id: string, patch: Partial<JobOpening>) {
+export async function updateJobOpening(id: string, patch: Record<string, unknown>) {
   const { data, error } = await supabase.from('job_openings').update(patch).eq('id', id).select().single()
   if (error) throw error
   return data as JobOpening
@@ -157,7 +171,7 @@ export async function updateCandidateStatus(id: string, status: string) {
   return data as Candidate
 }
 
-export async function updateCandidate(id: string, patch: Partial<Candidate>) {
+export async function updateCandidate(id: string, patch: Record<string, unknown>) {
   const { data, error } = await supabase
     .from('candidates')
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -192,15 +206,16 @@ export async function createInterview(input: {
   meeting_link?: string
   slot_key?: string
 }) {
-  const { data, error } = await supabase.from('interviews').insert({ ...input, candidate_confirmed: true }).select().single()
+  const { data, error } = await supabase.from('interviews').insert(input).select().single()
   if (error) throw error
   return data as Interview
 }
 
 export async function updateInterviewStatus(id: string, status: string, feedback?: string, rating?: number, metrics?: Record<string, number>) {
+  void metrics
   const { data, error } = await supabase
     .from('interviews')
-    .update({ status, feedback: feedback ?? null, rating: rating ?? null, metrics: metrics ?? null })
+    .update({ status, feedback: feedback ?? null, rating: rating ?? null })
     .eq('id', id)
     .select()
     .single()
@@ -209,12 +224,34 @@ export async function updateInterviewStatus(id: string, status: string, feedback
 }
 
 // ---------- Interview slots (recruiter-published pool) ----------
+// The live schema has no interview_slots table — the pool is the set of
+// unclaimed interview stubs (candidate_id IS NULL, status 'proposed').
+type SlotRow = Interview & { interviewer?: { first_name: string | null; last_name: string | null } | null }
+
+const slotFromInterview = (row: SlotRow): InterviewSlot => ({
+  id: row.id,
+  job_opening_id: row.job_opening_id ?? '',
+  round: row.round === 'HR' ? 'hr' : 'technical',
+  scheduled_at: row.scheduled_at ?? new Date().toISOString(),
+  meeting_link: row.meeting_link ?? null,
+  max_candidates: 1,
+  status: 'open',
+  created_by: row.interviewer_id ?? null,
+  created_at: row.created_at,
+})
+
 export async function fetchInterviewSlots(jobOpeningId?: string) {
-  let query = supabase.from('interview_slots').select('*').order('scheduled_at')
+  let query = supabase
+    .from('interviews')
+    .select('*, interviewer:employees(first_name, last_name)')
+    .is('candidate_id', null)
+    .eq('status', 'proposed')
+    .eq('reschedule_requested', false)
+    .order('scheduled_at')
   if (jobOpeningId) query = query.eq('job_opening_id', jobOpeningId)
   const { data, error } = await query
   if (error) throw error
-  return (data ?? []) as InterviewSlot[]
+  return ((data ?? []) as unknown as SlotRow[]).map(slotFromInterview)
 }
 
 export async function createInterviewSlot(input: {
@@ -224,24 +261,37 @@ export async function createInterviewSlot(input: {
   meeting_link?: string
   max_candidates?: number
 }) {
-  const { data: session } = await supabase.auth.getSession()
   const { data, error } = await supabase
-    .from('interview_slots')
-    .insert({ ...input, max_candidates: input.max_candidates ?? 1, created_by: session.session?.user.id ?? null })
+    .from('interviews')
+    .insert({
+      candidate_id: null,
+      job_opening_id: input.job_opening_id,
+      round: input.round === 'hr' ? 'HR' : 'Technical',
+      scheduled_at: input.scheduled_at,
+      mode: 'online',
+      meeting_link: input.meeting_link ?? null,
+      status: 'proposed',
+      feedback: null,
+      rating: null,
+    })
     .select()
     .single()
   if (error) throw error
-  return data as InterviewSlot
+  return slotFromInterview(data as unknown as SlotRow)
 }
 
 export async function updateInterviewSlot(id: string, patch: Partial<InterviewSlot>) {
-  const { data, error } = await supabase.from('interview_slots').update(patch).eq('id', id).select().single()
+  const update: Record<string, unknown> = {}
+  if (patch.scheduled_at !== undefined) update.scheduled_at = patch.scheduled_at
+  if (patch.meeting_link !== undefined) update.meeting_link = patch.meeting_link
+  if (patch.status !== undefined) update.status = patch.status === 'closed' ? 'closed' : 'proposed'
+  const { data, error } = await supabase.from('interviews').update(update).eq('id', id).select().single()
   if (error) throw error
-  return data as InterviewSlot
+  return slotFromInterview(data as unknown as SlotRow)
 }
 
 export async function deleteInterviewSlot(id: string) {
-  const { error } = await supabase.from('interview_slots').delete().eq('id', id)
+  const { error } = await supabase.from('interviews').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -252,20 +302,18 @@ export async function deleteInterviewSlot(id: string) {
  *          or the round ends in disqualification once all slots elapse.
  */
 export async function reviewRescheduleRequest(id: string, decision: 'approve' | 'reject', preferredTime?: string, adminNote?: string) {
+  void adminNote
   const patch =
     decision === 'approve'
       ? {
           scheduled_at: preferredTime ?? null,
           reschedule_requested: false,
           reschedule_status: 'accepted',
-          reschedule_admin_note: adminNote ?? null,
           status: 'scheduled',
-          candidate_confirmed: true,
         }
       : {
           reschedule_requested: false,
           reschedule_status: 'rejected',
-          reschedule_admin_note: adminNote ?? null,
         }
   const { data, error } = await supabase.from('interviews').update(patch).eq('id', id).select().single()
   if (error) throw error
@@ -303,7 +351,7 @@ export async function createOffer(input: {
   return data as Offer
 }
 
-export async function updateOffer(id: string, patch: Partial<Offer>) {
+export async function updateOffer(id: string, patch: Record<string, unknown>) {
   const { data, error } = await supabase.from('offers').update(patch).eq('id', id).select().single()
   if (error) throw error
   return data as Offer

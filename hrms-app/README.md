@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+# HRMS
+HRMS_Project 
+=======
 # Oklut HRMS — React + Supabase
 
 Modern HR management system for **Oklut Technologies** built with React, TypeScript, Tailwind CSS, and Supabase. Replaces the legacy static HTML site.
@@ -108,3 +112,4 @@ src/
 - All data lives in one shared Supabase database — there is no hardcoded employee data in the app.
 - RLS is enabled on every table; `is_admin()` / `is_manager()` helper functions in `0001_schema.sql` drive the policies, so the backend enforces access control in addition to the UI.
 - If the app shows the setup screen, `.env` is missing or the Supabase project isn't reachable — fill in the values and restart the dev server.
+>>>>>>> f9d92fb (Second commit -- Explore Careers redirecting, font gradience)

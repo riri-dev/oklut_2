@@ -403,7 +403,7 @@ export function useCreateJobOpening() {
 export function useUpdateJobOpening() {
   const { invalidate, toastError } = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<JobOpening> }) => api.updateJobOpening(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: Record<string, unknown> }) => api.updateJobOpening(id, patch),
     onSuccess: () => { invalidate([queryKeys.jobOpenings]); toast.success('Job opening updated') },
     onError: toastError,
   })
@@ -438,7 +438,7 @@ export function useUpdateCandidateStatus() {
 export function useUpdateCandidate() {
   const { invalidate, toastError } = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<Candidate> }) => api.updateCandidate(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: Record<string, unknown> }) => api.updateCandidate(id, patch),
     onSuccess: () => { invalidate([queryKeys.candidates]); toast.success('Candidate updated') },
     onError: toastError,
   })
@@ -525,7 +525,7 @@ export function useUpdateOfferStatus() {
 export function useUpdateOffer() {
   const { invalidate, toastError } = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<Offer> }) => api.updateOffer(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: Record<string, unknown> }) => api.updateOffer(id, patch),
     onSuccess: () => { invalidate([queryKeys.offers]); toast.success('Offer updated') },
     onError: toastError,
   })
