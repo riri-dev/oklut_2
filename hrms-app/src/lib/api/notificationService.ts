@@ -46,17 +46,13 @@ const formatLocalTime = (dateStr?: string | null) =>
 const extOf = (c: Candidate) =>
   c as Candidate & {
     exam_started_at?: string | null
-    exam_completed_at?: string | null
-    exam_score?: number | null
-    exam_feedback?: string | null
     technical_interview_status?: string | null
     technical_interview_time?: string | null
-    technical_interview_date?: string | null
     technical_interview_rescheduled?: boolean
     hr_interview_status?: string | null
     hr_interview_time?: string | null
-    hr_interview_date?: string | null
     hr_interview_rescheduled?: boolean
+    exam_feedback?: string | null
   }
 
 interface Step {
@@ -83,10 +79,6 @@ export function buildPipelineNotifications(input: PipelineInput): PipelineNotifi
   // Canonical exam schedule — strict precedence: new columns → legacy window fields.
   const opening = (candidate.job_opening ??
     (input.job as JobOpening | null | undefined)) as (JobOpening & {
-    exam_start_date?: string | null
-    exam_end_date?: string | null
-    exam_window_start?: string | null
-    exam_window_end?: string | null
     exam_start_time?: string | null
     exam_end_time?: string | null
     pass_percentage?: number | null
@@ -101,8 +93,8 @@ export function buildPipelineNotifications(input: PipelineInput): PipelineNotifi
   const totalQuestions = opening?.total_questions
   const passPercent = opening?.pass_percentage ?? opening?.exam_passing_score
   const calculatedExamPercentage =
-    totalQuestions != null && totalQuestions > 0 && ext.exam_score != null
-      ? Math.round((ext.exam_score / totalQuestions) * 100)
+    totalQuestions != null && totalQuestions > 0 && candidate.exam_score != null
+      ? Math.round((candidate.exam_score / totalQuestions) * 100)
       : 0
   const examPassed = passPercent != null && calculatedExamPercentage >= passPercent
 
@@ -113,15 +105,10 @@ export function buildPipelineNotifications(input: PipelineInput): PipelineNotifi
       (i) => i.round === round && ['passed', 'completed', 'cleared', 'failed'].includes((i.status ?? '').toLowerCase())
     )
   const findBookedRow = (round: 'Technical' | 'HR') =>
-    interviews.find(
-      (i) =>
-        i.round === round &&
-        i.status === 'scheduled' &&
-        (i as Interview & { candidate_confirmed?: boolean | null }).candidate_confirmed === true
-    )
+    interviews.find((i) => i.round === round && i.status === 'scheduled' && i.candidate_confirmed === true)
 
-  const technicalDateRaw = ext.technical_interview_date ?? findBookedRow('Technical')?.scheduled_at ?? ext.technical_interview_time
-  const hrDateRaw = ext.hr_interview_date ?? findBookedRow('HR')?.scheduled_at ?? ext.hr_interview_time
+  const technicalDateRaw = candidate.technical_interview_date ?? findBookedRow('Technical')?.scheduled_at ?? ext.technical_interview_time
+  const hrDateRaw = candidate.hr_interview_date ?? findBookedRow('HR')?.scheduled_at ?? ext.hr_interview_time
   const technicalDateMs = technicalDateRaw ? new Date(technicalDateRaw).getTime() : 0
   const hrDateMs = hrDateRaw ? new Date(hrDateRaw).getTime() : 0
 
@@ -182,13 +169,13 @@ export function buildPipelineNotifications(input: PipelineInput): PipelineNotifi
       chain('exam-reminder', 'Online Exam Reminder', 'Your Online Exam will commence in 1 hour.', 'warning', new Date(reminderMs).toISOString())
     }
     // Exam closed, never attempted — halt the chain.
-    if (examEndRaw && new Date(examEndRaw).getTime() < nowMs && ext.exam_completed_at == null && ext.exam_score == null && ext.exam_started_at == null) {
+    if (examEndRaw && new Date(examEndRaw).getTime() < nowMs && candidate.exam_completed_at == null && candidate.exam_score == null && ext.exam_started_at == null) {
       chain('exam-expired', 'Exam Window Closed', 'You did not complete the assessment within the designated window and are no longer eligible for subsequent rounds.', 'warning', examEndRaw)
       halted = true
     }
     // 4 — Online Exam Cleared (Fresher only) — fired only once a real score is
     // recorded; an un-scored submission stays in "awaiting evaluation".
-    if (ext.exam_score != null) {
+    if (candidate.exam_score != null) {
       chain(
         'exam-result',
         examPassed ? 'Online Exam Cleared' : 'Online Exam Status Update',
@@ -196,7 +183,7 @@ export function buildPipelineNotifications(input: PipelineInput): PipelineNotifi
           ? 'You cleared the Online Exam! Please schedule your slot for the Technical Interview.'
           : 'You did not qualify the Online Exam.',
         examPassed ? 'success' : 'warning',
-        ext.exam_completed_at
+        candidate.exam_completed_at
       )
       if (!examPassed) halted = true
     }

@@ -51,23 +51,6 @@ import { formatDate, formatDateTime, formatCurrency } from '@/lib/format'
 import type { Interview } from '@/lib/database.types'
 import { fetchInterviewSlots, createInterviewSlot, updateInterviewSlot, deleteInterviewSlot } from '@/lib/api/modules'
 
-// Read-shims for legacy UI affordances whose backing columns are not part of
-// the live public schema. Compile-only casts; no runtime behaviour change.
-type CandidateDqExt = { malpractice_flag?: boolean | null; cheating_detected?: boolean | null }
-type InterviewLegacyExt = {
-  metrics?: Record<string, number> | null
-  malpractice_flag?: boolean | null
-  reschedule_reason?: string | null
-  reschedule_preferred_time?: string | null
-  reschedule_admin_note?: string | null
-}
-type OfferLegacyExt = {
-  candidate_response?: string | null
-  relocation_required?: boolean | null
-  relocation_location?: string | null
-  service_bond_years?: number | null
-}
-
 interface SlotDraft {
   id?: string
   scheduled_at: string
@@ -593,7 +576,7 @@ function CandidatesTab() {
                         <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                           <Switch
                             className="scale-75"
-                            checked={!!(c as CandidateDqExt).malpractice_flag}
+                            checked={!!c.malpractice_flag}
                             onCheckedChange={(v) => updateCandidate.mutate({ id: c.id, patch: { malpractice_flag: v } })}
                           />
                           Malpractice
@@ -601,7 +584,7 @@ function CandidatesTab() {
                         <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                           <Switch
                             className="scale-75"
-                            checked={!!(c as CandidateDqExt).cheating_detected}
+                            checked={!!c.cheating_detected}
                             onCheckedChange={(v) => updateCandidate.mutate({ id: c.id, patch: { cheating_detected: v } })}
                           />
                           AI Tool Violation
@@ -800,8 +783,7 @@ function InterviewsTab() {
 
   const openScorecard = (i: Interview) => {
     setScorecard(i)
-    const ivMetrics = (i as InterviewLegacyExt).metrics ?? {}
-    setMetricValues({ ...ivMetrics, ...Object.fromEntries((METRIC_SETS[i.round] ?? []).map((m) => [m, ivMetrics[m] ?? 3])) })
+    setMetricValues({ ...(i.metrics ?? {}), ...Object.fromEntries((METRIC_SETS[i.round] ?? []).map((m) => [m, i.metrics?.[m] ?? 3])) })
     setScoreStatus(i.status === 'failed' ? 'failed' : 'passed')
     setScoreFeedback(i.feedback ?? '')
   }
@@ -871,14 +853,13 @@ const submit = async (e: React.FormEvent) => {
   const candidateInterviews = interviews.filter((i) => i.candidate_id)
 
   const handleApproveReschedule = async (i: Interview) => {
-    const iv = i as InterviewLegacyExt
-    if (!iv.reschedule_preferred_time) return
-    await reviewReschedule.mutateAsync({ id: i.id, decision: 'approve', preferredTime: iv.reschedule_preferred_time })
+    if (!i.reschedule_preferred_time) return
+    await reviewReschedule.mutateAsync({ id: i.id, decision: 'approve', preferredTime: i.reschedule_preferred_time })
     const cand = candidates.find((c) => c.id === i.candidate_id)
     if (cand) {
       const patch: Record<string, string> = {}
-      if ((i.round ?? '').toLowerCase() === 'technical') patch.technical_interview_date = iv.reschedule_preferred_time
-      if ((i.round ?? '').toLowerCase() === 'hr') patch.hr_interview_date = iv.reschedule_preferred_time
+      if ((i.round ?? '').toLowerCase() === 'technical') patch.technical_interview_date = i.reschedule_preferred_time
+      if ((i.round ?? '').toLowerCase() === 'hr') patch.hr_interview_date = i.reschedule_preferred_time
       if (Object.keys(patch).length) update.mutate({ id: cand.id, patch })
     }
   }
@@ -903,9 +884,7 @@ const submit = async (e: React.FormEvent) => {
             <h3 className="text-sm font-semibold">Reschedule Requests ({rescheduleRequests.length})</h3>
             <span className="text-xs text-muted-foreground">Candidates asking to move their confirmed interview</span>
           </div>
-          {rescheduleRequests.map((rawReq) => {
-            const req = rawReq as Interview & InterviewLegacyExt
-            return (
+          {rescheduleRequests.map((req) => (
             <div key={req.id} className="rounded-lg border bg-muted/20 p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -948,8 +927,7 @@ const submit = async (e: React.FormEvent) => {
                 </div>
               </div>
             </div>
-            )
-          })}
+          ))}
           <p className="text-xs text-muted-foreground">
             Approving moves the interview to the candidate&apos;s preferred time. Rejecting keeps the original slot — the candidate must then pick an available slot or is disqualified once all slots elapse.
           </p>
@@ -1013,16 +991,16 @@ const submit = async (e: React.FormEvent) => {
                           <span className="font-medium text-amber-700">
                             Reschedule {i.reschedule_status === 'pending' ? 'requested' : i.reschedule_status}
                           </span>
-                          {i.reschedule_status === 'rejected' && (i as InterviewLegacyExt).reschedule_admin_note
-                            ? ` �?" ${(i as InterviewLegacyExt).reschedule_admin_note}`
+                          {i.reschedule_status === 'rejected' && i.reschedule_admin_note
+                            ? ` — ${i.reschedule_admin_note}`
                             : i.reschedule_status === 'accepted'
-                              ? ' �?" moved to preferred time'
+                              ? ' — moved to preferred time'
                               : ''}
                         </p>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
-                      {(i as InterviewLegacyExt).malpractice_flag ? (
+                      {i.malpractice_flag ? (
                         <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Flagged</span>
                       ) : (
                         <span className="text-muted-foreground text-xs">Clear</span>
@@ -1113,7 +1091,7 @@ const submit = async (e: React.FormEvent) => {
                     setSlotKey(v)
                     const opening = jobs.find((j) => j.id === jobId)
                     if (opening) {
-                      const max = (opening as unknown as Record<string, unknown>)[maxForSlot(v)]
+                      const max = opening[maxForSlot(v)]
                       if (max != null) setSlotMax(String(max))
                     }
                   }}
@@ -1321,9 +1299,7 @@ function OffersTab() {
                 </tr>
               </thead>
               <tbody>
-                {offers.map((rawO) => {
-                  const o = rawO as typeof rawO & OfferLegacyExt
-                  return (
+                {offers.map((o) => (
                   <tr key={o.id} className="border-b last:border-0">
                     <td className="px-4 py-2.5 font-medium">{o.candidate?.name}</td>
                     <td className="px-4 py-2.5">{o.job_opening?.title ?? '—'}</td>
@@ -1364,8 +1340,7 @@ function OffersTab() {
                       </div>
                     </td>
                   </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>

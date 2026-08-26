@@ -48,7 +48,7 @@ function withSuspense(node: React.ReactNode) {
 
 // Hash-based routing so GitHub Pages (https://riri.dev.github.io/oklut_1)
 // serves the SPA without 404s on refresh — URLs live after the '#', e.g.
-// https://riri.dev.github.io/oklut_2/#/portal.
+// https://riri.dev.github.io/oklut_1/#/portal.
 export const router = createHashRouter(
   createRoutesFromElements(
     <>

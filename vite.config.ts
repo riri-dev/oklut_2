@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/oklut_1/',
+  base: '/oklut_2/',
   plugins: [react()],
   resolve: {
     alias: {

@@ -65,7 +65,7 @@ export default function CareersPage() {
     if (error) {
       toast.error('Failed to submit application: ' + error.message)
     } else {
-      toast.success(`Application received! Your portal login ID is ${data}`)
+      toast.success(`Application received! Your portal login ID is ${data} (password 1234)`)
       setSelectedJob(null)
       setName('')
       setEmail('')

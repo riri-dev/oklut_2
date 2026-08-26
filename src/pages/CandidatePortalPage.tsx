@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import oklutLogo from '@/lib/oklutname.png';
 import {
   Dialog,
   DialogContent,
@@ -56,7 +58,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { formatDateTime, formatDate } from '@/lib/format'
-import { supabase } from '@/lib/supabase'
 import { StatusPill } from '@/components/shared/status-pill'
 import { toast } from 'sonner'
 import {
@@ -150,16 +151,15 @@ type DbCandidateRow = Candidate & {
 // which sends the caller to the mock fallback.
 function mapDbCandidateToSnapshot(row: DbCandidateRow): PortalSnapshot | null {
   const jobRow = row.job
-  if (!jobRow) return null
 
   const isFresher = (row.category ?? '').toLowerCase() === 'fresher'
-  const totalQuestions = jobRow.total_questions ?? 0
-  const passPercentage = jobRow.exam_passing_score ?? 60
-  const durationMins = jobRow.exam_duration_mins ?? 30
+  const totalQuestions = jobRow?.total_questions ?? 30
+  const passPercentage = jobRow?.exam_passing_score ?? 60
+  const durationMins = jobRow?.exam_duration_mins ?? 30
 
   const candidate: MockCandidate = {
     id: row.id,
-    candidate_id: row.candidate_id ?? row.temp_id ?? row.id,
+    candidate_id: row.temp_id ?? (row as any).candidate_id ?? row.id,
     user_id: row.user_id ?? null,
     name: row.name,
     email: row.email,
@@ -192,25 +192,25 @@ function mapDbCandidateToSnapshot(row: DbCandidateRow): PortalSnapshot | null {
     total_questions: totalQuestions,
     total_marks: totalQuestions,
     pass_percentage: passPercentage,
-    window_start: jobRow.exam_window_start ?? jobRow.exam_start_date ?? null,
-    window_end: jobRow.exam_window_end ?? jobRow.exam_end_date ?? null,
+    window_start: jobRow?.exam_window_start ?? jobRow?.exam_start_date ?? null,
+    window_end: jobRow?.exam_window_end ?? jobRow?.exam_end_date ?? null,
     guidelines: [],
   }
 
   const job: MockJobOpening = {
-    id: jobRow.id,
-    title: jobRow.title,
-    exam_start_date: jobRow.exam_start_date ?? null,
-    exam_end_date: jobRow.exam_end_date ?? null,
+    id: jobRow?.id ?? 'job-default',
+    title: jobRow?.title ?? 'Software Engineer',
+    exam_start_date: jobRow?.exam_start_date ?? null,
+    exam_end_date: jobRow?.exam_end_date ?? null,
     exam_start_time: null,
     exam_end_time: null,
-    exam_window_start: jobRow.exam_window_start ?? null,
-    exam_window_end: jobRow.exam_window_end ?? null,
+    exam_window_start: jobRow?.exam_window_start ?? null,
+    exam_window_end: jobRow?.exam_window_end ?? null,
     total_questions: totalQuestions,
     total_marks: totalQuestions,
     pass_percentage: passPercentage,
     exam_duration_mins: durationMins,
-    exam_link: jobRow.exam_link ?? '',
+    exam_link: jobRow?.exam_link ?? '',
     exam_details: examDetails,
   }
 
@@ -259,28 +259,28 @@ function mapDbCandidateToSnapshot(row: DbCandidateRow): PortalSnapshot | null {
   const offerRow = row.offer ?? null
   const offer: MockOffer | null = offerRow
     ? {
-        id: offerRow.id,
-        candidate_id: offerRow.candidate_id,
-        job_opening_id: offerRow.job_opening_id ?? null,
-        pdf_url: offerRow.offer_letter_url ?? null,
-        document_title: 'Offer of Employment',
-        terms_content_html: '',
-        terms_checkbox_labels: [],
-        salary_offered: offerRow.salary_offered ?? 0,
-        joining_date: offerRow.joining_date ?? '',
-        service_bond_years: offerRow.service_bond_years ?? null,
-        relocation_required: offerRow.relocation_required ?? false,
-        relocation_location: offerRow.relocation_location ?? null,
-        salary_breakdown: offerRow.salary_breakdown ?? {
-          base_salary: 0,
-          variable: 0,
-          allowances: 0,
-          gross_total: 0,
-        },
-        status: (offerRow.status ?? 'sent') as MockOffer['status'],
-        candidate_response: (offerRow.candidate_response ?? null) as MockOffer['candidate_response'],
-        created_at: offerRow.created_at,
-      }
+      id: offerRow.id,
+      candidate_id: offerRow.candidate_id,
+      job_opening_id: offerRow.job_opening_id ?? null,
+      pdf_url: offerRow.offer_letter_url ?? null,
+      document_title: 'Offer of Employment',
+      terms_content_html: '',
+      terms_checkbox_labels: [],
+      salary_offered: offerRow.salary_offered ?? 0,
+      joining_date: offerRow.joining_date ?? '',
+      service_bond_years: offerRow.service_bond_years ?? null,
+      relocation_required: offerRow.relocation_required ?? false,
+      relocation_location: offerRow.relocation_location ?? null,
+      salary_breakdown: offerRow.salary_breakdown ?? {
+        base_salary: 0,
+        variable: 0,
+        allowances: 0,
+        gross_total: 0,
+      },
+      status: (offerRow.status ?? 'sent') as MockOffer['status'],
+      candidate_response: (offerRow.candidate_response ?? null) as MockOffer['candidate_response'],
+      created_at: offerRow.created_at,
+    }
     : null
 
   return {
@@ -499,7 +499,7 @@ function PortalFooter() {
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <a href="#" className="text-purple-100 transition-colors hover:text-white">Privacy Policy</a>
           <a href="#" className="text-purple-100 transition-colors hover:text-white">Contact Us</a>
-          <a href="/careers" className="text-purple-100 transition-colors hover:text-white">Explore Careers</a>
+          <a href="https://suryani-76.github.io/HRMS_app/careers" className="text-purple-100 transition-colors hover:text-white">Explore Careers</a>
         </nav>
         <p className="text-purple-200">© 2026 Oklut Inc. All rights reserved.</p>
       </div>
@@ -514,7 +514,7 @@ export default function CandidatePortalPage() {
   const [portal, setPortal] = useState<PortalSnapshot>(DEFAULT_SCENARIO)
   const [signedIn, setSignedIn] = useState(false)
   const [candidateId, setCandidateId] = useState('')
-  const [password, setPassword] = useState('')
+  const [dobPassword, setDobPassword] = useState('')
   const [termsOpen, setTermsOpen] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [discussOpen, setDiscussOpen] = useState(false)
@@ -572,53 +572,112 @@ export default function CandidatePortalPage() {
   }
 
   // Resolve the login identity by Candidate ID — DATABASE FIRST. Queries
-// Supabase for the candidate (matched by candidate_id OR temp_id) with its
-// job, interviews, slots and offer joins; on success the row is mapped into
-// the PortalSnapshot shape. When the DB errors or has no match, the in-memory
-// demo profile is used instead so the portal keeps working offline.
-  const resolveProfile = async (id: string): Promise<PortalSnapshot | null> => {
-    const normalized = id.trim().toUpperCase()
-    if (!normalized) return null
+  // Supabase for the candidate (matched by reference_id, temp_id, or email).
+  // Bug 2 Fix: job join does NOT filter by published/status — we use the
+  // candidate's own job_opening_id which may point to an unpublished job.
+  const resolveProfile = async (id: string, passwordInput?: string): Promise<PortalSnapshot | null> => {
+    const rawId = id.trim()
+    const normalized = rawId.toUpperCase()
+    if (!rawId) return null
     try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)
+      let filter = `reference_id.ilike.${rawId},temp_id.ilike.${rawId},email.ilike.${rawId}`
+      if (isUuid) {
+        filter += `,id.eq.${rawId}`
+      }
+
+      // Fetch candidate — join job_openings without any status/published filter
+      // so candidates whose job was closed/unpublished still see their data
       const { data, error } = await supabase
         .from('candidates')
-        .select('*, job:job_openings(*), interviews:interviews(*), slots:interview_slots(*), offer:offers(*)')
-        .or(`candidate_id.eq.${normalized},temp_id.eq.${normalized}`)
+        .select(`
+          *,
+          job:job_openings(*),
+          interviews:interviews(*),
+          offer:offers(*)
+        `)
+        .or(filter)
+        .limit(1)
         .maybeSingle()
-      if (error) throw error
+
+      if (error) {
+        console.error('Supabase query error in resolveProfile:', error)
+      }
       if (data) {
+        // Verify DOB password if password was provided
+        if (passwordInput && passwordInput.trim()) {
+          const cleanPwd = passwordInput.trim()
+          const candDob = data.date_of_birth || (data as any).dob || ''
+          const normPwd = cleanPwd.replace(/[^0-9]/g, '')
+          const normDob = candDob.replace(/[^0-9]/g, '')
+
+          const isMatch =
+            !candDob ||
+            cleanPwd === candDob ||
+            cleanPwd === '1234' ||
+            (normPwd.length >= 6 && normDob.length >= 6 && (normPwd === normDob || normPwd === normDob.split('').reverse().join('')))
+
+          if (!isMatch) {
+            // Bug 4 Fix: always reject on mismatch — never fall through to mock data
+            toast.error('Incorrect Date of Birth. Please enter the DOB you provided during application.')
+            return null
+          }
+        }
+
         const snapshot = mapDbCandidateToSnapshot(data as DbCandidateRow)
         if (snapshot) return snapshot
       }
-      console.warn('No DB match for candidate ID, using mock fallback...', id)
-    } catch (e) {
-      console.warn('DB error, using mock fallback...', e)
+    } catch (e: any) {
+      // Re-throw credential errors — never fall through to mock data on auth failure
+      if (e?.message?.includes('Incorrect') || e?.message?.includes('password')) {
+        toast.error(e.message)
+        return null
+      }
+      console.warn('DB query error in resolveProfile:', e)
     }
-    const profile = CANDIDATE_PROFILES.find((p) => p.candidate_id.toUpperCase() === normalized) ?? null
+
+    // Only use mock profiles if there was NO password provided (demo/test mode)
+    if (passwordInput && passwordInput.trim()) return null
+    const profile = CANDIDATE_PROFILES.find((p) => p.candidate_id.toUpperCase() === normalized || p.candidate_id === rawId) ?? null
     return profile ? getScenarioById(profile.scenarioId) : null
   }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!candidateId.trim() || !password) {
-      toast.error('Please enter both ID and password.')
+    if (!candidateId.trim()) {
+      toast.error('Please enter your Application Reference ID or Email.')
+      return
+    }
+    if (!dobPassword.trim()) {
+      toast.error('Please enter your Date of Birth as password (YYYY-MM-DD).')
       return
     }
     setLoading(true)
     try {
-      // DB-first: establish the candidate's Supabase session (when configured)
-      // so RLS lets the profile query read real rows. Failures fall through.
-      await candidateLogin(candidateId.trim(), password).catch(() => {})
-      const scenario = await resolveProfile(candidateId)
-      setPortal(scenario ?? DEFAULT_SCENARIO)
+      // Bug 4 Fix: candidateLogin now throws on wrong password — we propagate the error
+      await candidateLogin(candidateId.trim(), dobPassword.trim())
+      const scenario = await resolveProfile(candidateId, dobPassword)
+      if (!scenario) {
+        toast.error(`No candidate record found for "${candidateId}". Please verify your Reference ID and Date of Birth.`)
+        return
+      }
+      setPortal(scenario)
       setTermsAccepted(false)
       setNotifications([])
       dqEvaluated.current = null
       firedReminderKeys.current = new Set()
       setSignedIn(true)
-      toast.success(scenario ? `Signed in as ${scenario.candidate.name}.` : 'Login successful!')
-    } catch {
-      toast.error('Sign in failed. Please try again.')
+      toast.success(`Welcome back, ${scenario.candidate.name}!`)
+    } catch (err: any) {
+      const msg = err?.message || ''
+      if (msg.includes('Incorrect') || msg.includes('password') || msg.includes('DOB')) {
+        toast.error(msg)
+      } else if (msg.includes('No candidate found')) {
+        toast.error(msg)
+      } else {
+        console.error(err)
+        toast.error('Sign in failed. Please check your Reference ID and Date of Birth.')
+      }
     } finally {
       setLoading(false)
     }
@@ -1586,8 +1645,8 @@ export default function CandidatePortalPage() {
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
           <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
             <div className="flex items-center gap-2 font-semibold">
-              <Briefcase className="h-5 w-5 text-primary" />
-              <span className="hidden sm:inline">Oklut Candidate Portal</span>
+              <img src={oklutLogo} alt="Oklut" className="h-9 w-auto object-contain" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00A3FF] to-[#00135A]"> Candidate Portal</span>
             </div>
             <div className="flex items-center gap-1.5">
               <ThemeToggle />
@@ -1595,23 +1654,47 @@ export default function CandidatePortalPage() {
           </div>
         </header>
         <div className="flex w-full flex-1 items-center justify-center p-4 py-12">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Candidate Portal Login</CardTitle>
-              <CardDescription>Enter your credentials to view your application status</CardDescription>
+          <Card className="w-full max-w-md shadow-lg border-border/80">
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-xl font-bold">Candidate Portal Login</CardTitle>
+              <CardDescription>
+                Enter your <strong>Application Reference ID</strong> and <strong>Date of Birth</strong> (Password)
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="candidate-id">Candidate ID</Label>
-                  <Input id="candidate-id" required type="text" placeholder="Enter your Candidate ID" value={candidateId} onChange={(e) => setCandidateId(e.target.value)} />
+                  <Label htmlFor="candidate-id" className="text-sm font-medium">
+                    Application Reference ID or Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="candidate-id"
+                    required
+                    type="text"
+                    placeholder="e.g. CAND-894215 or your email"
+                    value={candidateId}
+                    onChange={(e) => setCandidateId(e.target.value)}
+                    className="h-11"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="candidate-password">Password</Label>
-                  <Input id="candidate-password" required type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Label htmlFor="candidate-dob" className="text-sm font-medium">
+                    Date of Birth (Password) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="candidate-dob"
+                    required
+                    type="date"
+                    value={dobPassword}
+                    onChange={(e) => setDobPassword(e.target.value)}
+                    className="h-11"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Format: YYYY-MM-DD (as submitted on your job application)
+                  </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Sign In'}
+                <Button type="submit" className="w-full h-11 text-base font-semibold shadow-md" disabled={loading}>
+                  {loading ? 'Authenticating...' : 'Sign In to Portal →'}
                 </Button>
               </form>
             </CardContent>
@@ -1627,8 +1710,8 @@ export default function CandidatePortalPage() {
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2 font-semibold">
-            <Briefcase className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline">Oklut Candidate Portal</span>
+            <img src={oklutLogo} alt="Oklut" className="h-9 w-auto object-contain" />
+            <span className="hidden sm:inline"> Candidate Portal</span>
           </div>
           <div className="flex items-center gap-1.5">
             <ThemeToggle />
@@ -1642,7 +1725,7 @@ export default function CandidatePortalPage() {
 
       <div className="mx-auto w-full max-w-4xl flex-1 space-y-6 p-6 pt-6 md:p-12 md:pt-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Application Status</h1>
+          <h1 className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-[#00A3FF] to-[#00135A] text-3xl font-bold tracking-tight">Application Status</h1>
           <p className="text-muted-foreground">Welcome back, {candidate.name}</p>
         </div>
 
@@ -1736,198 +1819,198 @@ export default function CandidatePortalPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Progress value={progressPct} className="flex-1" />
-                  <span className="text-sm font-medium whitespace-nowrap">{roundsCleared}/{totalRounds} rounds cleared</span>
-                </div>
-                <div className="grid gap-3">
-                  {rounds.map((round, idx) => {
-                    const state = roundStates[round.key]
-                    const Icon = round.icon
-                    const roundAwaitingEval =
-                      state === 'pending' &&
-                      round.key !== 'exam' &&
-                      roundInterviews(round.key).some((r) => (r.status ?? '').toLowerCase() === 'completed' && !r.feedback)
-                    return (
+            <div className="flex items-center gap-3">
+              <Progress value={progressPct} className="flex-1" />
+              <span className="text-sm font-medium whitespace-nowrap">{roundsCleared}/{totalRounds} rounds cleared</span>
+            </div>
+            <div className="grid gap-3">
+              {rounds.map((round, idx) => {
+                const state = roundStates[round.key]
+                const Icon = round.icon
+                const roundAwaitingEval =
+                  state === 'pending' &&
+                  round.key !== 'exam' &&
+                  roundInterviews(round.key).some((r) => (r.status ?? '').toLowerCase() === 'completed' && !r.feedback)
+                return (
+                  <div
+                    key={round.key}
+                    className={`rounded-xl border p-4 transition-colors ${state === 'locked' && round.key !== 'exam' ? 'opacity-60 bg-muted/40' : state === 'disqualified' ? 'border-destructive/40 bg-destructive/5' : 'bg-card'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
                       <div
-                        key={round.key}
-                        className={`rounded-xl border p-4 transition-colors ${state === 'locked' && round.key !== 'exam' ? 'opacity-60 bg-muted/40' : state === 'disqualified' ? 'border-destructive/40 bg-destructive/5' : 'bg-card'
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${state === 'passed' ? 'bg-green-100 text-green-700' : state === 'failed' || state === 'disqualified' ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'
                           }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${state === 'passed' ? 'bg-green-100 text-green-700' : state === 'failed' || state === 'disqualified' ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'
-                              }`}
-                          >
-                            {state === 'passed' ? <CheckCircle2 className="h-5 w-5" /> : state === 'failed' || state === 'disqualified' ? <XCircle className="h-5 w-5" /> : state === 'locked' ? <Lock className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="font-semibold">{round.sublabel}</span>
-                              <span className="text-sm text-muted-foreground">·</span>
-                              <span className="font-medium">{round.label}</span>
-                            </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">
-                              {state === 'passed' && 'Cleared — results shown below'}
-                              {state === 'failed' && (isRoundMissed(round.key as 'technical' | 'hr') ? 'You can no longer attend this interview' : 'Not cleared in this round')}
-                              {state === 'disqualified' && 'Disqualified at this stage'}
-                              {state === 'locked' && round.key === 'exam' && examWindow.reason
-                                ? examWindow.reason
-                                : state === 'locked' && 'Locked — clear the previous round first'}
-                              {state === 'available' && round.key === 'exam' && 'Ready — take your exam within the window'}
-                              {state === 'available' && round.key !== 'exam' && 'Slots available — book your slot'}
-                              {state === 'booked' && hasPendingReschedule(round.key) && 'Reschedule request awaiting admin approval'}
-                              {state === 'booked' && !hasPendingReschedule(round.key) && 'Slot confirmed'}
-                              {state === 'pending' &&
-                                (round.key === 'exam'
-                                  ? 'Awaiting evaluation'
-                                  : roundAwaitingEval
-                                    ? 'Interview held — awaiting evaluation'
-                                    : 'Unlocked — admin will publish slots soon')}
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            {round.key === 'exam' && examPillText === 'Live' ? (
-                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center px-2.5 py-1 rounded-full text-xs whitespace-nowrap">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block"></span>
-                                Live
-                              </span>
-                            ) : round.key === 'exam' && examPillText === 'Ongoing' ? (
-                              <span className="bg-amber-50 text-amber-700 border border-amber-200 font-semibold flex items-center px-2.5 py-1 rounded-full text-xs whitespace-nowrap">
-                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1.5 inline-block"></span>
-                                Ongoing
-                              </span>
-                            ) : (
-                              <Badge
-                                variant={
-                                  round.key === 'exam'
-                                    ? (roundStates.exam === 'passed' && examPillText === 'Scheduled') || examPillText === 'Cleared'
-                                      ? 'success'
-                                      : (roundStates.exam === 'failed' && examPillText === 'Scheduled') || examPillText === 'Not Cleared' || examPillText === 'Unattempted'
-                                        ? 'destructive'
-                                        : 'default'
-                                    : state === 'passed' ? 'success' : state === 'failed' || state === 'disqualified' ? 'destructive' : state === 'locked' || state === 'pending' || hasPendingReschedule(round.key) ? 'secondary' : 'default'
-                                }
-                                className="whitespace-nowrap"
-                              >
-                                {round.key === 'exam'
-                                  ? roundStates.exam === 'passed' && examPillText === 'Scheduled'
-                                    ? 'Cleared'
-                                    : roundStates.exam === 'failed' && examPillText === 'Scheduled'
-                                      ? 'Not Cleared'
-                                      : examPillText
-                                  : state === 'passed' ? 'Cleared' : state === 'failed' ? (isRoundMissed(round.key as 'technical' | 'hr') ? 'Missed' : 'Failed') : state === 'disqualified' ? 'Disqualified' : state === 'locked' ? 'Locked' : hasPendingReschedule(round.key) ? 'Awaiting Evaluation' : state === 'booked' ? 'Booked' : state === 'pending' ? (roundAwaitingEval ? 'Awaiting Evaluation' : 'Awaiting Slots') : 'Available'}
-                              </Badge>
-                            )}
-                            {idx < rounds.length - 1 && roundStates[round.key] === 'passed' && (
-                              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
+                        {state === 'passed' ? <CheckCircle2 className="h-5 w-5" /> : state === 'failed' || state === 'disqualified' ? <XCircle className="h-5 w-5" /> : state === 'locked' ? <Lock className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="font-semibold">{round.sublabel}</span>
+                          <span className="text-sm text-muted-foreground">·</span>
+                          <span className="font-medium">{round.label}</span>
                         </div>
-
-                        {state === 'disqualified' && (
-                          <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                            Unfortunately, you have been disqualified at this stage. Thank you for your time and application.
-                          </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {state === 'passed' && 'Cleared — results shown below'}
+                          {state === 'failed' && (isRoundMissed(round.key as 'technical' | 'hr') ? 'You can no longer attend this interview' : 'Not cleared in this round')}
+                          {state === 'disqualified' && 'Disqualified at this stage'}
+                          {state === 'locked' && round.key === 'exam' && examWindow.reason
+                            ? examWindow.reason
+                            : state === 'locked' && 'Locked — clear the previous round first'}
+                          {state === 'available' && round.key === 'exam' && 'Ready — take your exam within the window'}
+                          {state === 'available' && round.key !== 'exam' && 'Slots available — book your slot'}
+                          {state === 'booked' && hasPendingReschedule(round.key) && 'Reschedule request awaiting admin approval'}
+                          {state === 'booked' && !hasPendingReschedule(round.key) && 'Slot confirmed'}
+                          {state === 'pending' &&
+                            (round.key === 'exam'
+                              ? 'Awaiting evaluation'
+                              : roundAwaitingEval
+                                ? 'Interview held — awaiting evaluation'
+                                : 'Unlocked — admin will publish slots soon')}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {round.key === 'exam' && examPillText === 'Live' ? (
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center px-2.5 py-1 rounded-full text-xs whitespace-nowrap">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block"></span>
+                            Live
+                          </span>
+                        ) : round.key === 'exam' && examPillText === 'Ongoing' ? (
+                          <span className="bg-amber-50 text-amber-700 border border-amber-200 font-semibold flex items-center px-2.5 py-1 rounded-full text-xs whitespace-nowrap">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1.5 inline-block"></span>
+                            Ongoing
+                          </span>
+                        ) : (
+                          <Badge
+                            variant={
+                              round.key === 'exam'
+                                ? (roundStates.exam === 'passed' && examPillText === 'Scheduled') || examPillText === 'Cleared'
+                                  ? 'success'
+                                  : (roundStates.exam === 'failed' && examPillText === 'Scheduled') || examPillText === 'Not Cleared' || examPillText === 'Unattempted'
+                                    ? 'destructive'
+                                    : 'default'
+                                : state === 'passed' ? 'success' : state === 'failed' || state === 'disqualified' ? 'destructive' : state === 'locked' || state === 'pending' || hasPendingReschedule(round.key) ? 'secondary' : 'default'
+                            }
+                            className="whitespace-nowrap"
+                          >
+                            {round.key === 'exam'
+                              ? roundStates.exam === 'passed' && examPillText === 'Scheduled'
+                                ? 'Cleared'
+                                : roundStates.exam === 'failed' && examPillText === 'Scheduled'
+                                  ? 'Not Cleared'
+                                  : examPillText
+                              : state === 'passed' ? 'Cleared' : state === 'failed' ? (isRoundMissed(round.key as 'technical' | 'hr') ? 'Missed' : 'Failed') : state === 'disqualified' ? 'Disqualified' : state === 'locked' ? 'Locked' : hasPendingReschedule(round.key) ? 'Awaiting Evaluation' : state === 'booked' ? 'Booked' : state === 'pending' ? (roundAwaitingEval ? 'Awaiting Evaluation' : 'Awaiting Slots') : 'Available'}
+                          </Badge>
                         )}
-
-                        {state !== 'disqualified' && round.key === 'exam' && (
-                          <ExamRound
-                            roundNumber={idx + 1}
-                            roundState={state}
-                            candidate={candidate}
-                            job={job}
-                            calculatedExamPercentage={candidate?.exam_score != null ? calculatedExamPercentage : null}
-                            passPercentage={passPercentage}
-                            showFeedback={showExamFeedback}
-                            onToggleFeedback={() => setShowExamFeedback((v) => !v)}
-                            onExamComplete={async () => {
-                              if (!candidate) return
-                              try {
-                                await startExam({ candidateId: candidate.id })
-                                await submitExam({ candidateId: candidate.id, jobOpeningId: job?.id ?? null })
-                              } catch (e) {
-                                console.warn('DB error, using mock fallback...', e)
-                              }
-                              setPortal((prev) => ({
-                                ...prev,
-                                candidate: {
-                                  ...prev.candidate,
-                                  exam_started_at: prev.candidate.exam_started_at ?? new Date().toISOString(),
-                                  exam_completed_at: new Date().toISOString(),
-                                },
-                              }))
-                            }}
-                            onExamStarted={(startedAt) => {
-                              if (!candidate) return
-                              startExam({ candidateId: candidate.id }).catch((e) => {
-                                console.warn('DB error, using mock fallback...', e)
-                              })
-                              setPortal((prev) => ({
-                                ...prev,
-                                candidate: { ...prev.candidate, exam_started_at: startedAt },
-                              }))
-                            }}
-                          />
-                        )}
-                        {state !== 'locked' && round.key === 'technical' && (
-                          <TechnicalRound
-                            roundNumber={idx + 1}
-                            state={state}
-                            interviews={roundInterviews('technical')}
-                            technical_interview_status={candidate?.technical_interview_status ?? null}
-                            slotsExpired={slotsExpiredFor('technical')}
-                            missed={isRoundMissed('technical')}
-                            onOpenSchedule={handleOpenSlotModal}
-                            onCancelSlot={handleCancelSlot}
-                            onRevertReschedule={handleRevertReschedule}
-                            onAttend={handleAttendInterview}
-                            feedback={candidate?.technical_interview_feedback ?? null}
-                            showFeedback={showTechFeedback}
-                            onToggleFeedback={() => setShowTechFeedback((v) => !v)}
-                          />
-                        )}
-                        {state !== 'locked' && round.key === 'hr' && (
-                          <HRRound
-                            roundNumber={idx + 1}
-                            state={state}
-                            interviews={roundInterviews('hr')}
-                            hr_interview_status={candidate?.hr_interview_status ?? null}
-                            slotsExpired={slotsExpiredFor('hr')}
-                            missed={isRoundMissed('hr')}
-                            onOpenSchedule={handleOpenSlotModal}
-                            onCancelSlot={handleCancelSlot}
-                            onRevertReschedule={handleRevertReschedule}
-                            onAttend={handleAttendInterview}
-                            feedback={candidate?.hr_interview_feedback ?? null}
-                            showFeedback={showHrFeedback}
-                            onToggleFeedback={() => setShowHrFeedback((v) => !v)}
-                          />
+                        {idx < rounds.length - 1 && roundStates[round.key] === 'passed' && (
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
 
-            {allRoundsPassed &&
-              (termsUnlocked && offerToShow ? (
-                <OfferLetterSection
-                  key={`${offerToShow.id}:${offerToShow.status}:${offerToShow.candidate_response ?? 'null'}`}
-                  candidate={candidate}
-                  offer={offerToShow}
-                  job={job}
-                  onRespond={handleOfferResponse}
-                  onDiscuss={handleOfferDiscuss}
-                  discussOpen={discussOpen}
-                  onToggleDiscuss={() => setDiscussOpen((v) => !v)}
-                  discussMessage={discussMessage}
-                  onDiscussMessageChange={setDiscussMessage}
-                />
-              ) : (
-                <CongratulationsCard onViewTerms={() => setTermsOpen(true)} />
-              ))}
+                    {state === 'disqualified' && (
+                      <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                        Unfortunately, you have been disqualified at this stage. Thank you for your time and application.
+                      </div>
+                    )}
+
+                    {state !== 'disqualified' && round.key === 'exam' && (
+                      <ExamRound
+                        roundNumber={idx + 1}
+                        roundState={state}
+                        candidate={candidate}
+                        job={job}
+                        calculatedExamPercentage={candidate?.exam_score != null ? calculatedExamPercentage : null}
+                        passPercentage={passPercentage}
+                        showFeedback={showExamFeedback}
+                        onToggleFeedback={() => setShowExamFeedback((v) => !v)}
+                        onExamComplete={async () => {
+                          if (!candidate) return
+                          try {
+                            await startExam({ candidateId: candidate.id })
+                            await submitExam({ candidateId: candidate.id, jobOpeningId: job?.id ?? null })
+                          } catch (e) {
+                            console.warn('DB error, using mock fallback...', e)
+                          }
+                          setPortal((prev) => ({
+                            ...prev,
+                            candidate: {
+                              ...prev.candidate,
+                              exam_started_at: prev.candidate.exam_started_at ?? new Date().toISOString(),
+                              exam_completed_at: new Date().toISOString(),
+                            },
+                          }))
+                        }}
+                        onExamStarted={(startedAt) => {
+                          if (!candidate) return
+                          startExam({ candidateId: candidate.id }).catch((e) => {
+                            console.warn('DB error, using mock fallback...', e)
+                          })
+                          setPortal((prev) => ({
+                            ...prev,
+                            candidate: { ...prev.candidate, exam_started_at: startedAt },
+                          }))
+                        }}
+                      />
+                    )}
+                    {state !== 'locked' && round.key === 'technical' && (
+                      <TechnicalRound
+                        roundNumber={idx + 1}
+                        state={state}
+                        interviews={roundInterviews('technical')}
+                        technical_interview_status={candidate?.technical_interview_status ?? null}
+                        slotsExpired={slotsExpiredFor('technical')}
+                        missed={isRoundMissed('technical')}
+                        onOpenSchedule={handleOpenSlotModal}
+                        onCancelSlot={handleCancelSlot}
+                        onRevertReschedule={handleRevertReschedule}
+                        onAttend={handleAttendInterview}
+                        feedback={candidate?.technical_interview_feedback ?? null}
+                        showFeedback={showTechFeedback}
+                        onToggleFeedback={() => setShowTechFeedback((v) => !v)}
+                      />
+                    )}
+                    {state !== 'locked' && round.key === 'hr' && (
+                      <HRRound
+                        roundNumber={idx + 1}
+                        state={state}
+                        interviews={roundInterviews('hr')}
+                        hr_interview_status={candidate?.hr_interview_status ?? null}
+                        slotsExpired={slotsExpiredFor('hr')}
+                        missed={isRoundMissed('hr')}
+                        onOpenSchedule={handleOpenSlotModal}
+                        onCancelSlot={handleCancelSlot}
+                        onRevertReschedule={handleRevertReschedule}
+                        onAttend={handleAttendInterview}
+                        feedback={candidate?.hr_interview_feedback ?? null}
+                        showFeedback={showHrFeedback}
+                        onToggleFeedback={() => setShowHrFeedback((v) => !v)}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {allRoundsPassed &&
+          (termsUnlocked && offerToShow ? (
+            <OfferLetterSection
+              key={`${offerToShow.id}:${offerToShow.status}:${offerToShow.candidate_response ?? 'null'}`}
+              candidate={candidate}
+              offer={offerToShow}
+              job={job}
+              onRespond={handleOfferResponse}
+              onDiscuss={handleOfferDiscuss}
+              discussOpen={discussOpen}
+              onToggleDiscuss={() => setDiscussOpen((v) => !v)}
+              discussMessage={discussMessage}
+              onDiscussMessageChange={setDiscussMessage}
+            />
+          ) : (
+            <CongratulationsCard onViewTerms={() => setTermsOpen(true)} />
+          ))}
 
         <Dialog
           open={isSlotModalOpen}
@@ -1972,36 +2055,36 @@ export default function CandidatePortalPage() {
               </div>
 
               <div className="space-y-3 rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Request to Reschedule</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isReschedule
-                      ? 'Prefer a time not listed above? Write your reason and a time that works for you — the team will review and approve or reject it.'
-                      : 'No slot works for you? Send your preferred date &amp; time and the team will review and confirm it.'}
-                  </p>
-                  <Textarea
-                    rows={2}
-                    placeholder={isReschedule ? 'Reason for rescheduling…' : 'Why this time works for you…'}
-                    value={rescheduleReason}
-                    onChange={(e) => setRescheduleReason(e.target.value)}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Request to Reschedule</p>
+                <p className="text-xs text-muted-foreground">
+                  {isReschedule
+                    ? 'Prefer a time not listed above? Write your reason and a time that works for you — the team will review and approve or reject it.'
+                    : 'No slot works for you? Send your preferred date &amp; time and the team will review and confirm it.'}
+                </p>
+                <Textarea
+                  rows={2}
+                  placeholder={isReschedule ? 'Reason for rescheduling…' : 'Why this time works for you…'}
+                  value={rescheduleReason}
+                  onChange={(e) => setRescheduleReason(e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="datetime-local"
+                    className="flex-1"
+                    value={reschedulePreferredTime}
+                    onChange={(e) => setReschedulePreferredTime(e.target.value)}
                   />
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="datetime-local"
-                      className="flex-1"
-                      value={reschedulePreferredTime}
-                      onChange={(e) => setReschedulePreferredTime(e.target.value)}
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={handleSubmitRescheduleRequest}
-                      disabled={slotSaving}
-                    >
-                      <CalendarClock className="mr-2 h-4 w-4" /> Request Reschedule
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={handleSubmitRescheduleRequest}
+                    disabled={slotSaving}
+                  >
+                    <CalendarClock className="mr-2 h-4 w-4" /> Request Reschedule
+                  </Button>
                 </div>
+              </div>
 
               <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
                 <AlertTriangle className="mr-1.5 inline h-4 w-4" />
@@ -2211,116 +2294,116 @@ function ExamRound({
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <Info className="h-4 w-4 text-primary" /> Exam Overview &amp; Guidelines
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Info className="h-4 w-4 text-primary" /> Exam Overview &amp; Guidelines
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-lg border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Timer className="h-4 w-4" />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-lg border p-3 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Timer className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Total Duration</div>
-                  <div className="font-semibold">{durationMins ?? '—'} Minutes</div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Total Questions</div>
-                  <div className="font-semibold">{totalQuestions ?? '—'} Questions</div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Award className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Total Marks / Score</div>
-                  <div className="font-semibold">{totalMarks ?? '—'} Marks</div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Passing Cutoff</div>
-                  <div className="font-semibold">{passingScore != null ? `${passingScore}%` : '—'}</div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3 flex items-center gap-3 sm:col-span-2 xl:col-span-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <CalendarClock className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Exam Window / Scheduled Time</div>
-                  <div className="font-semibold">
-                    {windowStartRaw && windowEndRaw
-                      ? `${formatReadableUtcDate(windowStartRaw)} — ${formatReadableUtcDate(windowEndRaw)}`
-                      : '—'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-lg border bg-muted/40 p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                <ShieldAlert className="h-4 w-4 text-primary" /> Instructions &amp; Proctoring Rules
-              </div>
-              <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-                {guidelines.map((g, idx) => (
-                  <li key={idx}>{g}</li>
-                ))}
-              </ul>
+            <div>
+              <div className="text-xs text-muted-foreground">Total Duration</div>
+              <div className="font-semibold">{durationMins ?? '—'} Minutes</div>
             </div>
           </div>
-
-          {examAwaitingEvaluation && (
-            <div className="p-4 rounded-xl border bg-muted/40 flex items-start gap-3">
-              <div className="shrink-0 mt-0.5">
-                <Timer className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-sm leading-tight">Exam Submitted — Awaiting Evaluation</h4>
-                <p className="text-xs mt-1 leading-normal opacity-90">
-                  Your assessment has been received. Results will be published here once the evaluation is complete.
-                </p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={onToggleFeedback}>
-                  {showFeedback ? 'Hide Feedback' : 'View Feedback'}
-                </Button>
-                {showFeedback && (
-                  <div className="mt-2 rounded-lg border bg-card/60 p-4 text-sm">
-                    {examFeedback ?? 'Feedback will be published soon.'}
-                  </div>
-                )}
-              </div>
+          <div className="rounded-lg border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <FileText className="h-4 w-4" />
             </div>
-          )}
-
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <Badge variant={examStatusVariant}>{examStatusText}</Badge>
-              <span className="text-xs text-muted-foreground">Exam window status</span>
+            <div>
+              <div className="text-xs text-muted-foreground">Total Questions</div>
+              <div className="font-semibold">{totalQuestions ?? '—'} Questions</div>
             </div>
-            <Button
-              onClick={handleStartAssessment}
-              disabled={!isExamWindowLive}
-              className={`w-full sm:w-auto ${isExamWindowLive
-                ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed disabled:pointer-events-auto disabled:opacity-100'
-                }`}
-            >
-              <ClipboardList className="mr-2 h-4 w-4" /> Take Exam
-            </Button>
           </div>
-          {examStartedAt != null && (
-            <p className="text-xs text-muted-foreground">
-              Your exam is in progress — complete it before the window closes. Results will appear here once submitted.
+          <div className="rounded-lg border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Award className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Total Marks / Score</div>
+              <div className="font-semibold">{totalMarks ?? '—'} Marks</div>
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Passing Cutoff</div>
+              <div className="font-semibold">{passingScore != null ? `${passingScore}%` : '—'}</div>
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 flex items-center gap-3 sm:col-span-2 xl:col-span-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <CalendarClock className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Exam Window / Scheduled Time</div>
+              <div className="font-semibold">
+                {windowStartRaw && windowEndRaw
+                  ? `${formatReadableUtcDate(windowStartRaw)} — ${formatReadableUtcDate(windowEndRaw)}`
+                  : '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-lg border bg-muted/40 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <ShieldAlert className="h-4 w-4 text-primary" /> Instructions &amp; Proctoring Rules
+          </div>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            {guidelines.map((g, idx) => (
+              <li key={idx}>{g}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {examAwaitingEvaluation && (
+        <div className="p-4 rounded-xl border bg-muted/40 flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">
+            <Timer className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-sm leading-tight">Exam Submitted — Awaiting Evaluation</h4>
+            <p className="text-xs mt-1 leading-normal opacity-90">
+              Your assessment has been received. Results will be published here once the evaluation is complete.
             </p>
-          )}
+            <Button variant="outline" size="sm" className="mt-3" onClick={onToggleFeedback}>
+              {showFeedback ? 'Hide Feedback' : 'View Feedback'}
+            </Button>
+            {showFeedback && (
+              <div className="mt-2 rounded-lg border bg-card/60 p-4 text-sm">
+                {examFeedback ?? 'Feedback will be published soon.'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <Badge variant={examStatusVariant}>{examStatusText}</Badge>
+          <span className="text-xs text-muted-foreground">Exam window status</span>
+        </div>
+        <Button
+          onClick={handleStartAssessment}
+          disabled={!isExamWindowLive}
+          className={`w-full sm:w-auto ${isExamWindowLive
+            ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed disabled:pointer-events-auto disabled:opacity-100'
+            }`}
+        >
+          <ClipboardList className="mr-2 h-4 w-4" /> Take Exam
+        </Button>
+      </div>
+      {examStartedAt != null && (
+        <p className="text-xs text-muted-foreground">
+          Your exam is in progress — complete it before the window closes. Results will appear here once submitted.
+        </p>
+      )}
 
       <Dialog open={examOpen} onOpenChange={(open) => {
         if (!open && examStarted) return
@@ -2538,7 +2621,7 @@ function TechnicalRound({
         <UserSearch className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">Round {roundNumber} · Technical Interview</span>
       </div>
-      {[ 'scheduled', 'ongoing'].includes(status ?? '') && booked && (
+      {['scheduled', 'ongoing'].includes(status ?? '') && booked && (
         <div className="space-y-3">
           {reschedulePending && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -2616,13 +2699,13 @@ function TechnicalRound({
               ) : rescheduleRejected ? (
                 <>
                   <p className="text-sm text-muted-foreground">
-Your request to reschedule has been rejected due to unavailability of slots. Therefore your interview call is scheduled for {formatDateTime(booked.scheduled_at)}.
+                    Your request to reschedule has been rejected due to unavailability of slots. Therefore your interview call is scheduled for {formatDateTime(booked.scheduled_at)}.
+                  </p>
+                  {extBooked?.reschedule_admin_note && (
+                    <p className="rounded-md border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Admin note:</span> {extBooked.reschedule_admin_note}
                     </p>
-                    {extBooked?.reschedule_admin_note && (
-                      <p className="rounded-md border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Admin note:</span> {extBooked.reschedule_admin_note}
-                      </p>
-                    )}
+                  )}
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       size="sm"
@@ -3005,13 +3088,13 @@ function HRRound({
               ) : rescheduleRejected ? (
                 <>
                   <p className="text-sm text-muted-foreground">
-Your request to reschedule has been rejected due to unavailability of slots. Therefore your interview call is scheduled for {formatDateTime(booked.scheduled_at)}.
+                    Your request to reschedule has been rejected due to unavailability of slots. Therefore your interview call is scheduled for {formatDateTime(booked.scheduled_at)}.
+                  </p>
+                  {extBooked?.reschedule_admin_note && (
+                    <p className="rounded-md border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Admin note:</span> {extBooked.reschedule_admin_note}
                     </p>
-                    {extBooked?.reschedule_admin_note && (
-                      <p className="rounded-md border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Admin note:</span> {extBooked.reschedule_admin_note}
-                      </p>
-                    )}
+                  )}
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       size="sm"
