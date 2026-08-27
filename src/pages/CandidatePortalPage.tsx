@@ -48,7 +48,6 @@ import {
   Video,
   AlertTriangle,
   FileText,
-  Briefcase,
   ArrowRight,
   Sun,
   Moon,

@@ -262,24 +262,39 @@ const toPortalSlot = (row: InterviewSlot, booked: number): PortalInterviewSlot =
   meeting_link: row.meeting_link ?? null,
 })
 
-const toPortalOffer = (row: Offer): PortalOffer => ({
-  id: row.id,
-  candidate_id: row.candidate_id,
-  job_opening_id: row.job_opening_id ?? null,
-  pdf_url: row.offer_letter_url ?? null,
-  document_title: PORTAL_OFFER_DOCUMENT_TITLE,
-  terms_content_html: null,
-  terms_checkbox_labels: null,
-  salary_offered: row.salary_offered ?? null,
-  joining_date: row.joining_date ?? null,
-  service_bond_years: row.service_bond_years ?? null,
-  relocation_required: row.relocation_required ?? false,
-  relocation_location: row.relocation_location ?? null,
-  salary_breakdown: row.salary_breakdown ?? null,
-  status: row.status ?? 'sent',
-  candidate_response: (row.candidate_response as 'accept' | 'discuss' | 'reject') ?? null,
-  created_at: row.created_at,
-})
+const toPortalOffer = (row: Offer): PortalOffer => {
+  let bondYears: number | null = (row as any).service_bond_years ?? null
+  let relocReq = (row as any).relocation_required ?? false
+  if (row.offer_letter_url) {
+    try {
+      const parsed = JSON.parse(row.offer_letter_url)
+      if (parsed.bond) {
+        bondYears = parsed.bond.includes('1') ? 1 : parsed.bond.includes('2') ? 2 : 0
+      }
+      if (parsed.relocation) {
+        relocReq = parsed.relocation === 'Yes'
+      }
+    } catch {}
+  }
+  return {
+    id: row.id,
+    candidate_id: row.candidate_id,
+    job_opening_id: row.job_opening_id ?? null,
+    pdf_url: row.offer_letter_url ?? null,
+    document_title: PORTAL_OFFER_DOCUMENT_TITLE,
+    terms_content_html: null,
+    terms_checkbox_labels: null,
+    salary_offered: row.salary_offered ?? null,
+    joining_date: row.joining_date ?? null,
+    service_bond_years: bondYears,
+    relocation_required: relocReq,
+    relocation_location: (row as any).relocation_location ?? null,
+    salary_breakdown: (row as any).salary_breakdown ?? null,
+    status: row.status ?? 'sent',
+    candidate_response: (row.candidate_response as 'accept' | 'discuss' | 'reject') ?? null,
+    created_at: row.created_at,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Login — temp_id + password via the security-definer candidate_login RPC,
@@ -392,7 +407,7 @@ export async function fetchCandidatePortal(candidateId: string): Promise<PortalD
       .eq('candidate_id', candidateId)
       .order('scheduled_at'),
     jobId
-      ? supabase.from('interview_slots').select('*').eq('job_opening_id', jobId).order('scheduled_at').then((res) => res).catch(() => ({ data: [] as InterviewSlot[], error: null }))
+      ? supabase.from('interview_slots').select('*').eq('job_opening_id', jobId).order('scheduled_at')
       : Promise.resolve({ data: [] as InterviewSlot[], error: null }),
     supabase.from('offers').select('*').eq('candidate_id', candidateId).order('created_at', { ascending: false }),
   ])
@@ -405,11 +420,12 @@ export async function fetchCandidatePortal(candidateId: string): Promise<PortalD
   const offersRaw = offersRes.data ?? []
   if (offersRes.error) throw offersRes.error
 
-  // Only Technical / HR rounds are portal interview records — the Online Exam
-  // submission row drives candidate exam state, not the round cards.
-  const interviews = interviewsRaw
-    .filter((i) => i.round === 'Technical' || i.round === 'HR')
-    .map(toPortalInterview)
+  // Map all interviews to technical / hr portal shapes
+  const interviews = (interviewsRaw as Interview[]).map((i: Interview) => {
+    let roundType: 'Technical' | 'HR' = 'Technical'
+    if (i.round?.toLowerCase().includes('hr')) roundType = 'HR'
+    return toPortalInterview({ ...i, round: roundType })
+  })
 
   const bookedCounts: Record<string, number> = {}
   for (const i of interviews) {
@@ -422,7 +438,7 @@ export async function fetchCandidatePortal(candidateId: string): Promise<PortalD
     candidate: toPortalCandidate(candidate),
     job: jobRow ? toPortalJob(jobRow) : null,
     interviews,
-    slots: slotsRaw.map((s) => toPortalSlot(s, bookedCounts[s.id] ?? 0)),
+    slots: (slotsRaw as InterviewSlot[]).map((s: InterviewSlot) => toPortalSlot(s, bookedCounts[s.id] ?? 0)),
     offer: offersRaw[0] ? toPortalOffer(offersRaw[0]) : null,
   }
 }
